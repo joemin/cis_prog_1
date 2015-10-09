@@ -1,5 +1,8 @@
+<<<<<<< HEAD
 
 
+=======
+>>>>>>> 9b1251ff12438bf820bfd652e51077535f9bda5e
 # -*- coding: utf-8 -*-
 # transformations.py
 
@@ -957,6 +960,9 @@ def affine_matrix_from_points(v0, v1, shear=True, scale=True, usesvd=True):
         t = numpy.concatenate((t, numpy.zeros((ndims, 1))), axis=1)
         M = numpy.vstack((t, ((0.0,)*ndims) + (1.0,)))
     """elif usesvd or ndims != 3:
+=======
+    elif usesvd or ndims != 3:
+>>>>>>> 9b1251ff12438bf820bfd652e51077535f9bda5e
         # Rigid transformation via SVD of covariance matrix
         u, s, vh = numpy.linalg.svd(numpy.dot(v1, v0.T))
         # rotation matrix from SVD orthonormal bases
@@ -1919,5 +1925,8 @@ if __name__ == "__main__":
     import random  # used in doctests
     numpy.set_printoptions(suppress=True, precision=5)
     doctest.testmod()
+<<<<<<< HEAD
 
 
+=======
+>>>>>>> 9b1251ff12438bf820bfd652e51077535f9bda5e
