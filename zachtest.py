@@ -6,39 +6,35 @@ import sys
 def get_frame(G, g):
 	G = numpy.array(G)
 	g = numpy.array(g)
-	xx, yy, zz = numpy.sum(G * g, axis=0)
-	xy, yz, zx = numpy.sum(G * numpy.roll(g, -1, axis=1), axis=0)
-	xz, yx, zy = numpy.sum(G * numpy.roll(g, -2, axis=1), axis=0)
-	H = [[xx, xy, xz],
-	[yx, yy, yz],
-	[zx, zy, zz]]
-	trace_n = (xx + yy + zz)
-	delta = [yz - zy, zx - xz, xy - yx]
-	mat_3 = numpy.array(H) + numpy.array(H).T - trace_n
-	mat_4 = [[trace_n, delta[0], delta[1], delta[2]],
-	[delta[0], mat_3[0][0], mat_3[0][1], mat_3[0][2]],
-	[delta[1], mat_3[1][0], mat_3[1][1], mat_3[1][2]],
-	[delta[2], mat_3[2][0], mat_3[2][1], mat_3[2][2]]]
-	w1, v1 = numpy.linalg.eig(mat_4)
-	max_index = numpy.argmax(w1)
-	q = v1[:,max_index]
-	rot_matrix = [[math.pow(q[0], 2) + math.pow(q[1], 2) - math.pow(q[2], 2) - math.pow(q[3], 2), 2*(q[1]*q[2] - q[0]*q[3]), 2*(q[1]*q[3] + q[0]*q[2])],
-	[2*(q[1]*q[2] + q[0]*q[3]), math.pow(q[0], 2) - math.pow(q[1], 2) + math.pow(q[2], 2) - math.pow(q[3], 2), 2*(q[2]*q[3] - q[0]*q[1])],
-	[2*(q[1]*q[3] - q[0]*q[2]), 2*(q[2]*q[3] + q[0]*q[1]), math.pow(q[0], 2) - math.pow(q[1], 2) - math.pow(q[2], 2) + math.pow(q[3], 2)]]
-	R = numpy.array(rot_matrix)
-
 	Gx, Gy, Gz = numpy.sum(G, axis=0)
 	# print(Gx, Gy, Gz)
 	# print(len(G))
-	centroid_1 = numpy.dot(R, numpy.array([Gx, Gy, Gz])/len(G))
+	centroid_1 = numpy.array([Gx, Gy, Gz])/len(G)
 	# print(centroid_1)
 
 	gx, gy, gz = numpy.sum(g, axis=0)
 	centroid_2 = numpy.array([gx, gy, gz])/len(g)
 	# print(centroid_2)
 
-	t = numpy.array(centroid_1 - centroid_2)
-	# print(t)
+	t = numpy.array(centroid_2 - centroid_1)
+	G = G + t
+
+	xx, yy, zz = numpy.sum(G * g, axis=0)
+	xy, yz, zx = numpy.sum(G * numpy.roll(g, -1, axis=1), axis=0)
+	xz, yx, zy = numpy.sum(G * numpy.roll(g, -2, axis=1), axis=0)
+	N = [[xx+yy+zz, yz-zy,      zx-xz,      xy-yx],
+            [yz-zy,    xx-yy-zz, xy+yx,      zx+xz],
+            [zx-xz,    xy+yx,    yy-xx-zz, yz+zy],
+            [xy-yx,    zx+xz,    yz+zy,    zz-xx-yy]]
+	w1, v1 = numpy.linalg.eig(N)
+	max_index = numpy.argmax(w1)
+	q = v1[:,max_index]
+
+	rot_matrix = [[math.pow(q[0], 2) + math.pow(q[1], 2) - math.pow(q[2], 2) - math.pow(q[3], 2), 2*(q[1]*q[2] - q[0]*q[3]), 2*(q[1]*q[3] + q[0]*q[2])],
+	[2*(q[1]*q[2] + q[0]*q[3]), math.pow(q[0], 2) - math.pow(q[1], 2) + math.pow(q[2], 2) - math.pow(q[3], 2), 2*(q[2]*q[3] - q[0]*q[1])],
+	[2*(q[1]*q[3] - q[0]*q[2]), 2*(q[2]*q[3] + q[0]*q[1]), math.pow(q[0], 2) - math.pow(q[1], 2) - math.pow(q[2], 2) + math.pow(q[3], 2)]]
+	R = numpy.array(rot_matrix)
+
 	return Frame(R, t)
 
 
@@ -67,8 +63,8 @@ class Frame:
 		return self.translation
 
 
-if (len(sys.argv) != 3):
-	sys.exit(0)
+"""if (len(sys.argv) != 3):
+	sys.exit(0)"""
 """
 cal_body = open(sys.argv[1])
 cal_readings = open(sys.argv[2])
