@@ -107,7 +107,7 @@ def get_frame(G, g):
 	Gx, Gy, Gz = numpy.sum(G, axis=0)
 	# print(Gx, Gy, Gz)
 	# print(len(G))
-	centroid_1 = numpy.array([Gx, Gy, Gz])/len(G)
+	centroid_1 = numpy.dot(R, numpy.array([Gx, Gy, Gz])/len(G))
 	# print(centroid_1)
 
 	gx, gy, gz = numpy.sum(g, axis=0)
