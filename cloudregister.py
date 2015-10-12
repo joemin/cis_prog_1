@@ -188,7 +188,7 @@ for i in range(N_frames):
 		A.append([float(line[0].strip()), float(line[1].strip()), float(line[2].strip())])
 	F_d.append(get_frame(D, d))
 	F_a.append(get_frame(A, a))
-	
+
 	R_d_i = numpy.linalg.inv(F_d[i].get_rot())
 	P_d_i = numpy.dot(R_d_i, F_d[i].get_trans())
 	P_a = F_a[i].get_trans()
@@ -202,9 +202,10 @@ for i in range(N_frames):
 		inside = numpy.dot(R_a, c[j]) + P_a
 		C_expected.append(numpy.dot(R_d_i, inside) - P_d_i)
 		# C_expected.append(numpy.dot(numpy.dot(numpy.linalg.inv(numpy.array(F_d[i])), numpy.array(F_a[i])), numpy.array(c[j])))
-		print(C_expected[j])
-		print(line)
-		print("***")
+		print(i, j, C_expected[i*27 + j])
+		# print(line)
+		# print("***")
+		# print(i, j)
 	print("=============================================", i)
 
 # Change this later to be in the loop above
