@@ -5,12 +5,50 @@ from transformations import superimposition_matrix, random_rotation_matrix, quat
 
 # get v0, v1
 
-if (len(sys.argv) != 2):
+if (len(sys.argv) != 3):
 	sys.exit(0)
 
-in_file = open(sys.argv[1])
-print(in_file.readline())
+cal_body = open(sys.argv[1])
+cal_readings = open(sys.argv[2])
 
+cal_body.readline()
+first_line = cal_readings.readline().split(",")
+N_d = first_line[0].strip()
+N_a = first_line[1].strip()
+N_c = first_line[2].strip()
+N_frames = first_line[3].strip()
+d = []
+a = []
+c = []
+frames = []
+
+# cal_body
+for i in range(N_d):
+	line = cal_body.readline().split()
+	d.append([line[0].strip(), line[1].strip(), line[3].strip()])
+for i in range(N_a):
+	line = cal_body.readline().split()
+	a.append([line[0].strip(), line[1].strip(), line[3].strip()])
+for i in range(N_c):
+	line = cal_body.readline().split()
+	c.append([line[0].strip(), line[1].strip(), line[3].strip()])
+
+# cal_readings
+for i in range(N_frames):
+	D = []
+	A = []
+	C = []
+	for j in range(N_d):
+		D.append([line[0].strip(), line[1].strip(), line[3].strip()])
+	for j in range(N_a):
+		line = cal_body.readline().split()
+		A.append([line[0].strip(), line[1].strip(), line[3].strip()])
+	for j in range(N_c):
+		line = cal_body.readline().split()
+		C.append([line[0].strip(), line[1].strip(), line[3].strip()])
+	frames.append[D, A, C]
+
+# for each frame, calculate Fd and Fa, and compute C expected using Fd-1 * Fa * c
 
 R = random_rotation_matrix(numpy.random.random(3))
 v0 = [[0,0,0], [1,2,3], [2,3,1], [3,2,1]]

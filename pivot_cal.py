@@ -18,8 +18,6 @@ def get_frame(G, g):
 	[delta[2], mat_3[2][0], mat_3[2][1], mat_3[2][2]]]
 	w1, v1 = numpy.linalg.eig(mat_4)
 	max_index = numpy.argmax(w1)
-	# w, V = numpy.linalg.eigh(mat_4)
-	# q_new = V[:, numpy.argmax(w)]
 	q = v1[:,max_index]
 	rot_matrix = [[math.pow(q[0], 2) + math.pow(q[1], 2) - math.pow(q[2], 2) - math.pow(q[3], 2), 2*(q[1]*q[2] - q[0]*q[3]), 2*(q[1]*q[3] + q[0]*q[2])],
 	[2*(q[1]*q[2] + q[0]*q[3]), math.pow(q[0], 2) - math.pow(q[1], 2) + math.pow(q[2], 2) - math.pow(q[3], 2), 2*(q[2]*q[3] - q[0]*q[1])],
@@ -60,10 +58,10 @@ class Frame:
 	def get_trans(self):
 		return self.translation
 
-# if (len(sys.argv) != 2):
-# 	sys.exit(0)
+if (len(sys.argv) != 2):
+	sys.exit(0)
 
-# in_file = open(sys.argv[1])
+in_file = open(sys.argv[1])
 
 # frames = numpy.array([])
 # rotations = numpy.array([])
@@ -72,19 +70,28 @@ frames = []
 rotations = []
 translations = []
 
-# get array G1
-G = numpy.array([[0, 0, 0], [1, 1, 1], [2, 2, 2]])
-# calculate G0
-Gx, Gy, Gz = numpy.sum(G, axis=0)
-G0 = numpy.array([Gx, Gy, Gz])/len(G)
-# calculate g
-g = G - G0
-# calculate frames
-# if file is not empty, get G and g again, get a new F
+first_line = in_file.readline().split(",")
+num_markers = int(first_line[0].strip())
+num_frames = int(first_line[1].strip())
 
-frames.append(get_frame(G, g))
-rotations.append([frames[0].get_rot(), -1*numpy.identity(3)])
-translations.append(frames[0].get_trans())
+for i in range(0, num_frames):
+	line = in_file.readline().split(",")
+	k = 0
+	G = []
+	for j in range(0, num_markers):
+		# get array G1
+		G.append(numpy.array([float(line[0].strip()), float(line[1].strip()), float(line[2].strip())]))
+		# calculate G0
+	Gx, Gy, Gz = numpy.sum(G, axis=0)
+	if i is 0:
+		G0 = numpy.array([Gx, Gy, Gz])/len(G)
+	# calculate g
+	g = G - G0
+	frames.append(get_frame(G, g))
+	rotations.append(numpy.array([frames[k].get_rot(), -1*numpy.identity(3)]))
+	translations.append(numpy.array(frames[k].get_trans()).T)
+	# print(translations)
+	k = k+1
 
 
 # numpy.append(frames, get_frame(G, g))
@@ -96,14 +103,14 @@ translations.append(frames[0].get_trans())
 # 	k++
 # 	G = numpy.array([[0, 0, 0], [1, 1, 1], [2, 2, 2]])
 # 	g = G - G0
-# 	frames[k] = get_frame(G, g)
-# 	rotations[k] = [frames[k].get_rot(), -1*numpy.identity(3)]
-# 	translations[k] = frames[k].get_trans()
+# 	frames.append(get_frame(G, g))
+# 	rotations.append([frames[k].get_rot(), -1*numpy.identity(3)])
+# 	translations.append(frames[k].get_trans())
 
 
 # solve Pdimple = frames[k]*t
-# print(rotations)
-# print(translations)
+print(numpy.array(rotations))
+# print(numpy.array(translations))
 x = numpy.linalg.solve(numpy.array(rotations), numpy.array(translations))
 print(x)
 # print(y)
