@@ -82,6 +82,19 @@ from transformations import superimposition_matrix, random_rotation_matrix, quat
 def get_frame(G, g):
 	G = numpy.array(G)
 	g = numpy.array(g)
+	Gx, Gy, Gz = numpy.sum(G, axis=0)
+	# print(Gx, Gy, Gz)
+	# print(len(G))
+	centroid_1 = numpy.array([Gx, Gy, Gz])/len(G)
+	# print(centroid_1)
+
+	gx, gy, gz = numpy.sum(g, axis=0)
+	centroid_2 = numpy.array([gx, gy, gz])/len(g)
+	# print(centroid_2)
+
+	t = numpy.array(centroid_1 - centroid_2)
+	G = G + t
+
 	xx, yy, zz = numpy.sum(G * g, axis=0)
 	xy, yz, zx = numpy.sum(G * numpy.roll(g, -1, axis=1), axis=0)
 	xz, yx, zy = numpy.sum(G * numpy.roll(g, -2, axis=1), axis=0)
@@ -104,17 +117,7 @@ def get_frame(G, g):
 	R = numpy.array(rot_matrix)
 
 	# print(G)
-	Gx, Gy, Gz = numpy.sum(G, axis=0)
-	# print(Gx, Gy, Gz)
-	# print(len(G))
-	centroid_1 = numpy.dot(R, numpy.array([Gx, Gy, Gz])/len(G))
-	# print(centroid_1)
-
-	gx, gy, gz = numpy.sum(g, axis=0)
-	centroid_2 = numpy.array([gx, gy, gz])/len(g)
-	# print(centroid_2)
-
-	t = numpy.array(centroid_1 - centroid_2)
+	
 	# print(t)
 	return Frame(R, t)
 
@@ -159,7 +162,6 @@ N_frames = int(first_line[3].strip())
 d = []
 a = []
 c = []
-frames = []
 F_d = []
 F_a = []
 C_expected = []
@@ -196,13 +198,11 @@ for i in range(N_frames):
 	# print(new_trans)
 	# for each frame, calculate Fd and Fa, and compute C expected using Fd-1 * Fa * c
 	for j in range(N_c):
-		line = cal_readings.readline().split(",") # this is unnecessary
+		line = cal_readings.readline().split(",") # this is unnecessary right now
 		# C.append([float(line[0].strip()), float(line[1].strip()), float(line[2].strip())])
-		# C_expected.append(numpy.array(numpy.dot(R_d_i_R_a, c[j]) + new_trans))
 		inside = numpy.dot(R_a, c[j]) + P_a
 		C_expected.append(numpy.dot(R_d_i, inside) - P_d_i)
-		# C_expected.append(numpy.dot(numpy.dot(numpy.linalg.inv(numpy.array(F_d[i])), numpy.array(F_a[i])), numpy.array(c[j])))
-		print(i, j, C_expected[i*27 + j])
+		print(C_expected[i*27 + j])
 		# print(line)
 		# print("***")
 		# print(i, j)
