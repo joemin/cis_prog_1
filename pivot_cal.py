@@ -76,7 +76,6 @@ num_frames = int(first_line[1].strip())
 
 for i in range(0, num_frames):
 	line = in_file.readline().split(",")
-	k = 0
 	G = []
 	for j in range(0, num_markers):
 		# get array G1
@@ -88,10 +87,10 @@ for i in range(0, num_frames):
 	# calculate g
 	g = G - G0
 	frames.append(get_frame(G, g))
-	rotations.append(numpy.array([frames[k].get_rot(), -1*numpy.identity(3)]))
-	translations.append(numpy.array(frames[k].get_trans()).T)
+	rotations.append(numpy.array([frames[i].get_rot(), -1*numpy.identity(3)]))
+	translations.append(-1*numpy.array(frames[i].get_trans()).T)
+	print(translations[i])
 	# print(translations)
-	k = k+1
 
 
 # numpy.append(frames, get_frame(G, g))
@@ -109,9 +108,9 @@ for i in range(0, num_frames):
 
 
 # solve Pdimple = frames[k]*t
-print(numpy.array(rotations))
+# print(numpy.array(rotations))
 # print(numpy.array(translations))
 x = numpy.linalg.solve(numpy.array(rotations), numpy.array(translations))
-print(x)
+# print(x)
 # print(y)
 
