@@ -14,7 +14,9 @@
 
 \section{Mathematical Approaches and Algorithms}
 \subsection{Point Cloud to Point Cloud Registration}
-Our algorithm for solving point cloud to point cloud rigid body transformations roughly follows the quaternion method outlined in Dr. Taylor’s slides from class. We first take an input of two point clouds in the form of two sets of column vectors, then find the centroid of each of these point clouds and move them both to the origin. We then find the sum of the element-wise product between each point cloud’s points’ coordinates. This means that, for example, we take the product of every x$_i$ in the first point cloud and the x$_i$ in the second point cloud and then take the sum of these products (let us call this xx):
+Our algorithm for solving point cloud to point cloud rigid body transformations is based on a method found in Horn's paper. Our algorithm accepts two sets of column vectors as inputs. It is assumed that the vector in column $n$ in the first point cloud represents the same point as column $n$ in the second point cloud. We then normalize these two point clouds by finding their respective centroids, then subtracting the values of the centroid from each of their points. This effectively moves both point clouds to be centered on the origin.
+
+Once the point clouds are centered on the origin, we then attempt to find the rotation matrix that best fits the two point clouds together. The first step of this is to multiply the equivalent coordinates of respective points together and sum up those products. For example we take the product of every x$_i$ in the first point cloud and the x$_i$ in the second point cloud and then take the sum of these products (let us call this xx):
 \[xx = \sum_{i}^{N}(C1x_i*C2x_i)\]
 We then find yy, zz, xy, yz, zx, xz, yx, and zy, and use these values to compute a 4x4 matrix as outlined in Horn’s paper$^1$:
 \[
@@ -25,11 +27,28 @@ We then find yy, zz, xy, yz, zx, xz, yx, and zy, and use these values to compute
     xy-yz & zx+xz & yz+zy & zz-xx-yy
 \end{bmatrix}
 \]
-This 4x4 matrix has an eigenvector that has the maximum eigenvalue of all of the eigenvectors and that is our desired unit quaternion. We can now use this unit quaternion to compute the rotation matrix for these two point clouds. We do so by using the equations as outlined in Dr. Taylor’s slides. We can now apply this rotation to the first point cloud, and then compute the difference in the centroids to know the translation matrix. We now have our full frame transformation.
+We then find the eigen decomposition of this matrix. The eigenvector that corresponds to the largest eigenvalue is equivalent to the unit quaternion that represents the best fit rotation matrix. We can now use this unit quaternion to compute the rotation matrix for these two point clouds. The method to do this can be seen in the equation below. Where $q_i$ represents the $i^{th}$ element of the unit quaternion.
+
+\[
+\begin{bmatrix}
+    q_1^2 + q_2^2 - q_3^2 - q_4^2 & 2*(q_2*q_3 - q_1*q_4) & 2*(q_2*q_4 + q_1*q_3)\\
+    2*(q_2*q_3 + q_1*q_4) & q_1^2 - q_2^2 + q_3^2 - q_4^2 & 2*(q_3*q_4 - q_1*q_2)\\
+    2*(q_2*q_4 - q_1*q_3) & 2*(q_3*q_4 + q_1*q_2) & q_1^2 - q_2^2 - q_3^2 + q_4^2 \\
+\end{bmatrix}
+\]
+Once we have obtained the rotation matrix we now must compute the translation component of the frame transformation. In order to do this we got back to the original point clouds, before we shifted them to be centered on the origin. We apply the rotation matrix that we found to the non transformed points. We then find the difference in x,y, and z between the centroid of the rotated point cloud and the centroid of the fully transformed point cloud. The column vector of these differences represents the translation. We now have both the rotation and translation components of the frame transformation. 
 \subsection{Pivot Calibration Method}
-We take the first frame of input data, which represents the positions of the markers with respect to the EM tracker base coordinate system. With this first frame, we then compute the midpoint of all of the observed points and set this to define the probe coordinate system by setting it as the origin. We then calculate the points with respect to the probe coordinate system (which does not change from frame to frame). We then use our point cloud to point cloud registration algorithm from above to obtain the rotation matrices for each frame of points.
-We use this set of rotation matrices to solve the system of equations for P$_{dimple}$ and t$_g$. We can do so by setting up the 
-system of equtions as an Ax = b problem:
+\subsubsection{Electromagnetic Pivot}
+
+The first step in performing the pivot calibration is to determine the location of the markers in the coordinate system of the probe. In order to do this we take the first frame of input data, which represents the positions of the markers with respect to the EM tracker base coordinate system. We find the centroid of all of these points and define that as the origin of the probe coordinate system. We then define the marker coordinates with respect to this origin. These points are constant through all frames, since the location of the markers in the probe coordinate system will never change. 
+
+Once we have determined the locations of the marker points relative to the probe, we then read in the frames, each of which represents their positions relative to the EM Tracker Base for a different pivot angle. For each frame we utilize our frame transformation method to calculate the rotation and translation that best fit the transformation of that frame from the EM Tracker Base coordinate system to the probe coordinate system. 
+
+Once we have the frame transformation we can see that the following equation will hold, where $P_{dimple}$ represents the distance from the EM Tracker Base to the tip of the probe, $t_g$ represents the location of the tip of the probe with respect to the probe coordinate system, and $F_G = [R_G, p_G]$ represents the frame transform from the EM Tracker Base coordinate system to the probe coordinate system, and $t_g + P_{dimple}$ is actually a concatenation of matrices along the vertical axis.
+\[ R_G * t_g + p_G = P_{dimple} \implies (R_G - I)(t_g + P_{dimple}) = t_g\]
+
+By setting up this equation for each frame, we obtain a system of equations for the entire calibration. 
+
 \[
 \begin{bmatrix}
     \vdots & | & \vdots \\
@@ -37,9 +56,9 @@ system of equtions as an Ax = b problem:
     \vdots & | & \vdots
 \end{bmatrix}
 \begin{bmatrix}
-    P_{dimple} \\
+    t_g \\
     ----- \\
-    t_g
+    P_{dimple}
 \end{bmatrix}
  = 
 \begin{bmatrix}
@@ -48,7 +67,9 @@ system of equtions as an Ax = b problem:
     \vdots
 \end{bmatrix}
 \]
-We solved this system of equations using least squares.
+We can then solve this system using a least squares approach. This will yield the optimal (in the least squares sense) results for $t_g$ and $P_{dimple}$. 
+\subsubsection{Optical Pivot}
+The optical pivot calibration assumes that the transform from the probe to the EM Tracker Base is constant but the transform from the optical tracker to both the probe and the EM Tracker Base may vary in each frame. Therefore we must transform the points that the optical tracker sees on the probe in each frame to be in the coordinate system of the EM Tracker Base. To do this we read in the optical markers coordinates in the EM Tracker system from a file. Using these points and the D data from the frame we can then calculate $F_D$ which transforms points from the EM Base coordinate system to the Optical coordinate system. We can now use the exact method as described in the electromagnetic pivot calibration, but for each frame we transform the points using $F_D^{-1}$ so that we have points in the coordinate system of the EM Tracker Base and in the probe's coordinate system. This creates a scenario that is identical to the EM Pivot Calibration. 
 
 \section{Our Code}
 Our code is split into three executable files named cloudregister.py, pivot\_cal.py, and opt\_pivot\_cal.py. As the extensions would suggest, these are all Python scripts. Each has our point cloud to point cloud registration method in it (which we call get\_frame()), as well as a Frame class (that has its rotation and translation components, representing a full frame transformation). Given more time, we would have extracted these into a separate class to make our code less repetitive and more object-oriented.
