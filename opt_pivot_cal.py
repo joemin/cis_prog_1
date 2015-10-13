@@ -92,7 +92,7 @@ if (len(sys.argv) != 3):
 
 opt_file = open(sys.argv[1])
 cal_body = open(sys.argv[2])
-
+cal_body.readline()
 
 h_frames = []
 h_rotations = []
@@ -113,6 +113,7 @@ for i in range(0, num_d_markers):
 	line = cal_body.readline().split(",")
 	tpose = numpy.array([float(line[0].strip()), float(line[1].strip()), float(line[2].strip())])
 	d.append(numpy.array(tpose).T)
+d = numpy.array(d).T
 
 for i in range(0, num_frames):
 	D = []
@@ -124,59 +125,36 @@ for i in range(0, num_frames):
 		D.append(t)
 		# print(t)
 		# calculate G0
+	# D = numpy.array(D).T
+	# Dx, Dy, Dz = numpy.sum(D, axis=1)
+	# D0 = numpy.array([[Dx], [Dy], [Dz]])/len(D[0])
+	# d = D - D0
 	D = numpy.array(D).T
-	Dx, Dy, Dz = numpy.sum(D, axis=1)
-	D0 = numpy.array([[Dx], [Dy], [Dz]])/len(D[0])
-	d = D - D0
 	F_d = get_frame(D, d)
 	R_d_inv = F_d.get_rot().T
 	F_d_inv = Frame(R_d_inv, numpy.dot(R_d_inv,F_d.get_trans()))
 
 	for j in range(0, num_h_markers):
 		line = opt_file.readline().split(",")
-		# get array G1
 		t = numpy.array([[float(line[0].strip())],[float(line[1].strip())], [float(line[2].strip())]])
-		t = t + D0
-		# print(t)
+		# t = t + D0
 		H.append(t)
-		# print(t)
-		# calculate G0
 	H = numpy.squeeze(numpy.array(H).T)
 	if i is 0:
 		Hx, Hy, Hz = numpy.sum(numpy.squeeze(H), axis=1)
 		H0 = numpy.array([[Hx], [Hy], [Hz]])/len(H[0])
 		h = H - H0
-	# calculate g
-	# print(G)
-	# print(g)
-	F_h = get_frame(H, h)
-	#print(numpy.array(F_d_inv.get_rot()))
-	#print(numpy.array(H))
 	fdih = numpy.dot(numpy.array(F_d_inv.get_rot()), numpy.array(H))
-	#print(fdih)
-	#print(F_d_inv.get_trans())
 	frames.append(get_frame(fdih + F_d_inv.get_trans(), h))
-	# print(numpy.dot(frames[-1].get_rot(), g) + frames[-1].get_trans())
-	# print(G)
-	curr_rot = numpy.array(frames[i].get_rot())
-	# print(curr_rot)
-	# rotations.append([[curr_rot[0][0], curr_rot[0][1], curr_rot[0][2], -1, 0, 0], [curr_rot[1][0], curr_rot[1][1], curr_rot[1][2], 0, -1, 0], [curr_rot[2][0], curr_rot[2][1], curr_rot[2][2], 0, 0, -1]])
+	curr_rot = numpy.array(frames[-1].get_rot())
 	h_rotations.append([curr_rot[0][0], curr_rot[0][1], curr_rot[0][2], -1, 0, 0])
 	h_rotations.append([curr_rot[1][0], curr_rot[1][1], curr_rot[1][2], 0, -1, 0])
 	h_rotations.append([curr_rot[2][0], curr_rot[2][1], curr_rot[2][2], 0, 0, -1])
 	t = -1*frames[-1].get_trans()
-	#print(t)
-	# print(t)
-	# print("============================")
 	h_translations.append(t[0])
 	h_translations.append(t[1])
 	h_translations.append(t[2])
-	# print(translations[i])
 
-
-# # solve Pdimple = frames[k]*t
-# print(numpy.array(rotations))
-# print(numpy.array(translations))
 a = numpy.squeeze(numpy.array(h_rotations))
 b = numpy.array(h_translations)
 # print(a)
