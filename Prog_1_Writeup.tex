@@ -1,0 +1,94 @@
+\documentclass[a4paper]{article}
+
+\usepackage[english]{babel}
+\usepackage[utf8x]{inputenc}
+\usepackage{amsmath}
+\usepackage{graphicx}
+\usepackage[colorinlistoftodos]{todonotes}
+
+\title{CIS Programming Homework 1}
+\author{Zachary Sabin and Joseph Min}
+
+\begin{document}
+\maketitle
+
+\section{Mathematical Approaches and Algorithms}
+\subsection{Point Cloud to Point Cloud Registration}
+Our algorithm for solving point cloud to point cloud rigid body transformations roughly follows the quaternion method outlined in Dr. Taylor’s slides from class. We first take an input of two point clouds in the form of two sets of column vectors, then find the centroid of each of these point clouds and move them both to the origin. We then find the sum of the element-wise product between each point cloud’s points’ coordinates. This means that, for example, we take the product of every x$_i$ in the first point cloud and the x$_i$ in the second point cloud and then take the sum of these products (let us call this xx):
+\[xx = \sum_{i}^{N}(C1x_i*C2x_i)\]
+We then find yy, zz, xy, yz, zx, xz, yx, and zy, and use these values to compute a 4x4 matrix as outlined in Horn’s paper$^1$:
+\[
+\begin{bmatrix}
+    xx+yy+zz & yz-zy & zx-xz  & xy-yx \\
+    yz-zy & xx-yy-zz & xy+yx & zx+xz \\
+    zx-xz & xy+yx & yy-xx-zz & yz+zy \\
+    xy-yz & zx+xz & yz+zy & zz-xx-yy
+\end{bmatrix}
+\]
+This 4x4 matrix has an eigenvector that has the maximum eigenvalue of all of the eigenvectors and that is our desired unit quaternion. We can now use this unit quaternion to compute the rotation matrix for these two point clouds. We do so by using the equations as outlined in Dr. Taylor’s slides. We can now apply this rotation to the first point cloud, and then compute the difference in the centroids to know the translation matrix. We now have our full frame transformation.
+\subsection{Pivot Calibration Method}
+We take the first frame of input data, which represents the positions of the markers with respect to the EM tracker base coordinate system. With this first frame, we then compute the midpoint of all of the observed points and set this to define the probe coordinate system by setting it as the origin. We then calculate the points with respect to the probe coordinate system (which does not change from frame to frame). We then use our point cloud to point cloud registration algorithm from above to obtain the rotation matrices for each frame of points.
+We use this set of rotation matrices to solve the system of equations for P$_{dimple}$ and t$_g$. We can do so by setting up the 
+system of equtions as an Ax = b problem:
+\[
+\begin{bmatrix}
+    \vdots & | & \vdots \\
+    Rotations_i & | & -I \\
+    \vdots & | & \vdots
+\end{bmatrix}
+\begin{bmatrix}
+    P_{dimple} \\
+    ----- \\
+    t_g
+\end{bmatrix}
+ = 
+\begin{bmatrix}
+    \vdots \\
+    -Translations_i \\
+    \vdots
+\end{bmatrix}
+\]
+We solved this system of equations using least squares.
+
+\section{Our Code}
+Our code is split into three executable files named cloudregister.py, pivot\_cal.py, and opt\_pivot\_cal.py. As the extensions would suggest, these are all Python scripts. Each has our point cloud to point cloud registration method in it (which we call get\_frame()), as well as a Frame class (that has its rotation and translation components, representing a full frame transformation). Given more time, we would have extracted these into a separate class to make our code less repetitive and more object-oriented.
+
+\subsection{Frame Class}
+Our Frame class is a very simple class that holds a rotation matrix and a translation vector, which default to the identity matrix and the zero vector respectively. Its current methods are simply the setters and getters for each property.
+
+\subsection{get\_frame()}
+Our get\_frame() function follows the algorithm as outlined in 1.1. It takes in two point clouds as arguments, and then immediately stores one two copies of the arguments so we can manipulate the arguments and still have the original inputs. We first calculate the centroids of each point cloud by taking the sum of each coordinate in each cloud and then dividing by the number of points in each cloud (giving the mean of the points). The rest is a strict transcription of the algorithm into Python. The function returns an instance of the Frame class whose rotation and translation vectors are that of the frame transformation that transforms the first point cloud into the second.
+
+\subsection{cloudregister.py}
+Cloudregister.py is our solution to problem 4. It can be run from the command line by giving it two arguments, the calbody and cal\_readings text files respectively: \break
+\begin{center}
+python cloudregister.py /path/to/file/calbody.txt /path/to/file/calreadings.txt \break
+\end{center}
+It first parses through the calbody text file and stores the number of d, a, and c readings there will be in the file. It takes these and turns them each into the upper limits of for-loops that each get the data for each d, a, and c vector.
+It then moves on to the calreadings file. It takes the data for how many frames that the calreadings text file has and uses this as the upper limit for an outer for-loop. Inside this loop, we take each of the D and A readings from the file like we did the d and a readings from the calbody loop. We now have two sets of point clouds: D/d and A/a. So, we now find what frame transformation turns D into d and A into a respectively by passing these point clouds as arguments to our get\_frame() function, and store these into an array of frame transformations for D/d and A/a.
+We then calculate each of our expected C$_i$ values by taking the inverse of our A/a frame transformation and multiplying it by our D/d transformation and each of the c$_i$ values:
+\[F_a^{-1}F_dc_i = C_i^{expected}\]
+We then output these values to standard out, which we can pipe into a text file using normal commandline arguments as follows:
+\begin{center}
+python cloudregister.py /path/to/file/calbody.txt /path/to/file/calreadings.txt $>>$ /path/to/file/output.txt
+\end{center}
+
+\subsection{pivot\_cal.py}
+Pivot\_cal.py is our solution to problem 5. It can be run from the command line by giving it just the empivot.txt file as an argument: \break
+\begin{center}
+python pivot\_cal.py /path/to/file/empivot.txt \break
+\end{center}
+In pivot\_cal.py we have the same get\_frame() method and Frame class to start us off. However, now we just read in the number of EM markers and the number of frames for which we have data. The number of frames is our limit for our outer loop, in which we get all the points for the point cloud G. If this is the first frame, we also calculate a centroid, G0, as well as the point cloud g with respect to the first probe coordinates by taking this first G and subtracting G0. We then, for every frame, calculate the frame transformation for G/g by passing these two arguments into our get\_frame(). We then store the rotation and translation components of each frame transformation separately in their respective arrays. By the end, each array holds every rotation and every translation components of every frame transformation.
+Once we have all of our rotations and translations, we solve the system of equations as outlined in 1.2 by using the built-in numpy method, lstsq, for solving systems of equations. We then output these values to standard out.
+
+\subsection{opt\_pivot\_cal.py}
+Opt\_pivot\_cal.py is our solution to problem 6. It can be run from the command line by giving it the optpivot.txt file and calbody.txt file as arguments: \break
+\begin{center}
+python pivot\_cal.py /path/to/file/optpivot.txt /path/to/file/calbody.txt\break
+\end{center}
+Opt\_pivot\_cal.py has almost the exact same code as pivot\_cal.py, but instead of simply storing the rotations and translations from g to G, we have to find the overall transformation, $F_D^{-1}F_H$, which we do by taking in, again, the calbody file (which allows us to calculate F$_D$ as before), and the optpivot.txt file (which gives us D and H values, which allows us to calculate F$_H$ like we did F$_G$ in pivot\_cal.py.
+
+\section{Debugging}
+We had to do a lot of unit testing to ensure that our program was doing what we wanted it to. Whenever something wouldn't work overall, we ran a couple unit tests to make sure that our fundamental and mathematical reasoning was sound. Examples of this include generating random point clouds and using our get\_frame() method on them, and then applying the computed transformation on our first point cloud to see if it came out to be the same as the second.\break
+We also generated ground truth examples for our point cloud to point cloud registration as sanity checks to ensure that our basic algorithm was working (which basically consisted of using very simple point clouds, such as unit vectors). Once we had all the small components of our code working, we started to compare our output to the given output files, and continued to debug from there.
+\end{document}
