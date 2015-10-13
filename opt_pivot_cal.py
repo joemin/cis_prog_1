@@ -47,6 +47,9 @@ def get_frame(G, g):
         R = numpy.array(rot_matrix)
 
     t = numpy.dot(R.T, centroid_2) - centroid_1
+    # print("*************")
+    # print(t)
+    # print("*************")
     # t = numpy.zeros((3,1))
     # if (t[0][0] < .00000000001):
     #     t[0][0] = 0.00
@@ -84,10 +87,11 @@ class Frame:
 	def get_trans(self):
 		return self.translation
 
-if (len(sys.argv) != 2):
+if (len(sys.argv) != 3):
 	sys.exit(0)
 
-in_file = open(sys.argv[1])
+opt_file = open(sys.argv[1])
+cal_body = open(sys.argv[2])
 
 
 h_frames = []
@@ -95,18 +99,26 @@ h_rotations = []
 h_translations = []
 H0 = []
 h = []
+frames = []
 
 
-first_line = in_file.readline().split(",")
+first_line = opt_file.readline().split(",")
 num_d_markers = int(first_line[0].strip())
 num_h_markers = int(first_line[1].strip())
 num_frames = int(first_line[2].strip())
+print(num_d_markers)
+
+d = []
+for i in range(0, num_d_markers):
+	line = cal_body.readline().split(",")
+	tpose = numpy.array([float(line[0].strip()), float(line[1].strip()), float(line[2].strip())])
+	d.append(numpy.array(tpose).T)
 
 for i in range(0, num_frames):
 	D = []
 	H = []
 	for j in range(0, num_d_markers):
-		line = in_file.readline().split(",")
+		line = opt_file.readline().split(",")
 		# get array G1
 		t = [float(line[0].strip()),float(line[1].strip()), float(line[2].strip())]
 		D.append(t)
@@ -116,13 +128,16 @@ for i in range(0, num_frames):
 	Dx, Dy, Dz = numpy.sum(D, axis=1)
 	D0 = numpy.array([[Dx], [Dy], [Dz]])/len(D[0])
 	d = D - D0
+	F_d = get_frame(D, d)
+	R_d_inv = F_d.get_rot().T
+	F_d_inv = Frame(R_d_inv, numpy.dot(R_d_inv,F_d.get_trans()))
 
 	for j in range(0, num_h_markers):
-		line = in_file.readline().split(",")
+		line = opt_file.readline().split(",")
 		# get array G1
 		t = numpy.array([[float(line[0].strip())],[float(line[1].strip())], [float(line[2].strip())]])
 		t = t + D0
-		print(t)
+		# print(t)
 		H.append(t)
 		# print(t)
 		# calculate G0
@@ -134,16 +149,23 @@ for i in range(0, num_frames):
 	# calculate g
 	# print(G)
 	# print(g)
-	h_frames.append(get_frame(H, h))
+	F_h = get_frame(H, h)
+	#print(numpy.array(F_d_inv.get_rot()))
+	#print(numpy.array(H))
+	fdih = numpy.dot(numpy.array(F_d_inv.get_rot()), numpy.array(H))
+	#print(fdih)
+	#print(F_d_inv.get_trans())
+	frames.append(get_frame(fdih + F_d_inv.get_trans(), h))
 	# print(numpy.dot(frames[-1].get_rot(), g) + frames[-1].get_trans())
 	# print(G)
-	curr_rot = numpy.array(h_frames[i].get_rot())
+	curr_rot = numpy.array(frames[i].get_rot())
 	# print(curr_rot)
 	# rotations.append([[curr_rot[0][0], curr_rot[0][1], curr_rot[0][2], -1, 0, 0], [curr_rot[1][0], curr_rot[1][1], curr_rot[1][2], 0, -1, 0], [curr_rot[2][0], curr_rot[2][1], curr_rot[2][2], 0, 0, -1]])
 	h_rotations.append([curr_rot[0][0], curr_rot[0][1], curr_rot[0][2], -1, 0, 0])
 	h_rotations.append([curr_rot[1][0], curr_rot[1][1], curr_rot[1][2], 0, -1, 0])
 	h_rotations.append([curr_rot[2][0], curr_rot[2][1], curr_rot[2][2], 0, 0, -1])
-	t = -1*h_frames[i].get_trans()
+	t = -1*frames[-1].get_trans()
+	#print(t)
 	# print(t)
 	# print("============================")
 	h_translations.append(t[0])
