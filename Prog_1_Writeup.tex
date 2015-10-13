@@ -117,4 +117,26 @@ In order to test our registration and pivot calibration algorithms we hand gener
 \section{Who Dunnit?}
 For this assignment we worked almost completely in pair programming. This would consist of one person coding and the other person looking over the shoulder to ensure correctness and offer guidance on the structure and flow of the code. We switched who was coding fairly frequently. However, we did split up some of the coding. Zach wrote the unit tests for and debugged the frame transformation method, while Joe handled the file i/o and formatting the output. In order to keep our code up to date with each other we used github and git as a versioning system. 
 
+\section{Output}
+We used a closed form solution to solve for our point cloud to point cloud registrations, so there were no issues with convergence, and we are pretty sure of the correctness of our solutions.
+\break
+We generated four output files, one for each of the unknown files (h, i, j, and k). Their formats followed that of the sample output. To allow for the saving of space, an abridged version of the output of h can be found below. The rest of the output for h, as well as the full output for i, j, and k, can be found in our OUTPUT directory.
+\begin{center}
+\begin{tabular}{| l | c | r |}
+\hline
+206.53 & 193.32 & 191.42 \\
+\hline
+392.34 & 406.92 & 200.83 \\
+\hline
+211.26 & 208.33 & 208.38 \\
+215.32 & 212.77 & 334.60 \\
+219.38 & 217.21 & 460.83 \\
+210.86 & 332.09 & 203.86 \\
+\vdots & \vdots & \vdots \\
+\hline
+\end{tabular}
+\end{center}
+\break
+The first row is estimated post position with EM probe pivot calibration and the second row is the estimated post position with
+optical probe pivot calibration. The subsequent rows are the estimated C values.
 \end{document}
