@@ -112,4 +112,27 @@ Opt\_pivot\_cal.py has almost the exact same code as pivot\_cal.py, but instead 
 \section{Debugging}
 We had to do a lot of unit testing to ensure that our program was doing what we wanted it to. Whenever something wouldn't work overall, we ran a couple unit tests to make sure that our fundamental and mathematical reasoning was sound. Examples of this include generating random point clouds and using our get\_frame() method on them, and then applying the computed transformation on our first point cloud to see if it came out to be the same as the second.\break
 We also generated ground truth examples for our point cloud to point cloud registration as sanity checks to ensure that our basic algorithm was working (which basically consisted of using very simple point clouds, such as unit vectors). Once we had all the small components of our code working, we started to compare our output to the given output files, and continued to debug from there.
+
+\section{Output}
+We used a closed form solution to solve for our point cloud to point cloud registrations, so there were no issues with convergence, and we are pretty sure of the correctness of our solutions.
+\break
+We generated four output files, one for each of the unknown files (h, i, j, and k). Their formats followed that of the sample output. To allow for the saving of space, an abridged version of the output of h can be found below. The rest of the output for h, as well as the full output for i, j, and k, can be found in our OUTPUT directory.
+\begin{center}
+\begin{tabular}{| l | c | r |}
+\hline
+206.53 & 193.32 & 191.42 \\
+\hline
+392.34 & 406.92 & 200.83 \\
+\hline
+211.26 & 208.33 & 208.38 \\
+215.32 & 212.77 & 334.60 \\
+219.38 & 217.21 & 460.83 \\
+210.86 & 332.09 & 203.86 \\
+\vdots & \vdots & \vdots \\
+\hline
+\end{tabular}
+\end{center}
+\break
+The first row is estimated post position with EM probe pivot calibration and the second row is the estimated post position with
+optical probe pivot calibration. The subsequent rows are the estimated C values.
 \end{document}
