@@ -3,35 +3,41 @@ import math
 import sys
 
 def get_frame(G, g):
+	G = numpy.array(G)
+	g = numpy.array(g)
+	Gx, Gy, Gz = numpy.sum(G, axis=0)
+	# print(Gx, Gy, Gz)
+	# print(len(G))
+	centroid_1 = numpy.array([Gx, Gy, Gz])/len(G)
+	# print(centroid_1)
+
+	gx, gy, gz = numpy.sum(g, axis=0)
+	centroid_2 = numpy.array([gx, gy, gz])/len(g)
+	# print(centroid_2)
+
+	t = numpy.array(centroid_2 - centroid_1)
+	G = G + t
+
 	xx, yy, zz = numpy.sum(G * g, axis=0)
 	xy, yz, zx = numpy.sum(G * numpy.roll(g, -1, axis=1), axis=0)
 	xz, yx, zy = numpy.sum(G * numpy.roll(g, -2, axis=1), axis=0)
-	H = [[xx, xy, xz],
-	[yx, yy, yz],
-	[zx, zy, zz]]
-	trace_n = (xx + yy + zz)
-	delta = [yz - zy, zx - xz, xy - yx]
-	mat_3 = numpy.array(H) + numpy.array(H).T - trace_n
-	mat_4 = [[trace_n, delta[0], delta[1], delta[2]],
-	[delta[0], mat_3[0][0], mat_3[0][1], mat_3[0][2]],
-	[delta[1], mat_3[1][0], mat_3[1][1], mat_3[1][2]],
-	[delta[2], mat_3[2][0], mat_3[2][1], mat_3[2][2]]]
-	w1, v1 = numpy.linalg.eig(mat_4)
+	N = [[xx+yy+zz, yz-zy,      zx-xz,      xy-yx],
+            [yz-zy,    xx-yy-zz, xy+yx,      zx+xz],
+            [zx-xz,    xy+yx,    yy-xx-zz, yz+zy],
+            [xy-yx,    zx+xz,    yz+zy,    zz-xx-yy]]
+	w1, v1 = numpy.linalg.eig(N)
 	max_index = numpy.argmax(w1)
 	q = v1[:,max_index]
+
 	rot_matrix = [[math.pow(q[0], 2) + math.pow(q[1], 2) - math.pow(q[2], 2) - math.pow(q[3], 2), 2*(q[1]*q[2] - q[0]*q[3]), 2*(q[1]*q[3] + q[0]*q[2])],
 	[2*(q[1]*q[2] + q[0]*q[3]), math.pow(q[0], 2) - math.pow(q[1], 2) + math.pow(q[2], 2) - math.pow(q[3], 2), 2*(q[2]*q[3] - q[0]*q[1])],
 	[2*(q[1]*q[3] - q[0]*q[2]), 2*(q[2]*q[3] + q[0]*q[1]), math.pow(q[0], 2) - math.pow(q[1], 2) - math.pow(q[2], 2) + math.pow(q[3], 2)]]
 	R = numpy.array(rot_matrix)
 
-	Gx, Gy, Gz = numpy.sum(G, axis=0)
-	centroid_1 = numpy.dot(R, numpy.array([Gx, Gy, Gz])/len(G))
-
-	gx, gy, gz = numpy.sum(g, axis=0)
-	centroid_2 = numpy.array([gx, gy, gz])/len(g)
-
-	t = centroid_1 - centroid_2
-	return Frame(R, t)
+	# print(G)
+	
+	# print(t)
+	return Frame(R, -t)
 
 
 class Frame:
@@ -81,36 +87,26 @@ for i in range(0, num_frames):
 		# get array G1
 		G.append(numpy.array([float(line[0].strip()), float(line[1].strip()), float(line[2].strip())]))
 		# calculate G0
-	Gx, Gy, Gz = numpy.sum(G, axis=0)
 	if i is 0:
+		Gx, Gy, Gz = numpy.sum(G, axis=0)
 		G0 = numpy.array([Gx, Gy, Gz])/len(G)
 	# calculate g
 	g = G - G0
+	# print(g, G0)
 	frames.append(get_frame(G, g))
-	rotations.append(numpy.array([frames[i].get_rot(), -1*numpy.identity(3)]))
+	curr_rot = numpy.array(frames[i].get_rot())
+	# rotations.append([[curr_rot[0][0], curr_rot[0][1], curr_rot[0][2], -1, 0, 0], [curr_rot[1][0], curr_rot[1][1], curr_rot[1][2], 0, -1, 0], [curr_rot[2][0], curr_rot[2][1], curr_rot[2][2], 0, 0, -1]])
+	rotations.append([curr_rot[0][0], curr_rot[0][1], curr_rot[0][2], -1, 0, 0])
+	rotations.append([curr_rot[1][0], curr_rot[1][1], curr_rot[1][2], 0, -1, 0])
+	rotations.append([curr_rot[2][0], curr_rot[2][1], curr_rot[2][2], 0, 0, -1])
 	translations.append(-1*numpy.array(frames[i].get_trans()).T)
-	print(translations[i])
+	# print(translations[i])
 	# print(translations)
 
 
-# numpy.append(frames, get_frame(G, g))
-# print(frames)
-# numpy.append(rotations, numpy.array([frames[0].get_rot(), -1*numpy.identity(3)]))
-# numpy.append(translations, frames[0].get_trans())
-
-# while(file is not empty):
-# 	k++
-# 	G = numpy.array([[0, 0, 0], [1, 1, 1], [2, 2, 2]])
-# 	g = G - G0
-# 	frames.append(get_frame(G, g))
-# 	rotations.append([frames[k].get_rot(), -1*numpy.identity(3)])
-# 	translations.append(frames[k].get_trans())
-
-
 # solve Pdimple = frames[k]*t
-# print(numpy.array(rotations))
-# print(numpy.array(translations))
+print(numpy.array(rotations))
+print(numpy.array(translations))
 x = numpy.linalg.solve(numpy.array(rotations), numpy.array(translations))
-# print(x)
-# print(y)
+print(x)
 
