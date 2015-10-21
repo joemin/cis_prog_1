@@ -65,6 +65,28 @@ class Frame:
 	def get_trans(self):
 		return self.translation
 
+def B(k, v):
+	nCk = math.factorial(5) / (math.factorial(k)*math.factorial(5 - k))
+	return nCk*((1 - v)**(5 - k))*(v**(k))
+
+def get_coeff(C_expected, c, N_frames):
+	F = []
+	C_expected_norm = []
+	C_max = numpy.linalg.norm(numpy.amax(C_expected, axis=0))
+	C_min = numpy.linalg.norm(numpy.amin(C_expected, axis=0))
+
+	for i in range(len(C_expected)):
+		C_expected_norm.append((C_expected[i] - C_min)/(C_max - C_min))
+
+	# print(numpy.array(C_expected_norm).shape)
+
+	for data_point in range(len(C_expected_norm)):
+		F.append([])
+		for i in range(6):
+			for j in range(6):
+				for k in range(6):
+					F[data_point].append(B(i, C_expected_norm[data_point][0])*B(j, C_expected_norm[data_point][1])*B(k, C_expected_norm[data_point][2]))
+	return numpy.linalg.lstsq(numpy.array(F), numpy.array(c))[0]
 
 if (len(sys.argv) != 3):
 	sys.exit(0)
@@ -106,6 +128,7 @@ for i in range(N_frames):
 	D = []
 	A = []
 	C = []
+	C_expected.append([])
 	for j in range(N_d):
 		line = cal_readings.readline().split(",")
 		tpose = numpy.array([float(line[0].strip()), float(line[1].strip()), float(line[2].strip())])
@@ -123,32 +146,19 @@ for i in range(N_frames):
 	for j in range(N_c):
 		inside = numpy.dot(R_a, c[j]) + P_a
 		square = numpy.dot(R_d_i, inside) - P_d_i
-		C_expected.append([square[0][0], square[1][1], square[2][2]])
+		C_expected[i].append([square[0][0], square[1][1], square[2][2]])
 
 cal_body.close()
 cal_readings.close()
 
-C_expected_norm = []
+for frame in range(N_frames):
+	print(get_coeff(C_expected[frame], c, N_frames))
 
-C_max = numpy.linalg.norm(numpy.amax(C_expected, axis=0))
-C_min = numpy.linalg.norm(numpy.amin(C_expected, axis=0))
-# C_max = numpy.sqrt(numpy.dot(C_max_v, C_max_v))
-# C_min = numpy.sqrt(numpy.dot(C_min_v, C_min_v))
+# output = open("OUTPUT/" + filename + "output2.txt", 'w')
+# output.write(str(N_c) + ", " + str(N_frames) + ", " + filename + "output2.txt\n")
 
-
-for i in range(len(C_expected)):
-	C_expected_norm.append((C_expected[i] - C_min)/(C_max - C_min))
-	# C_expected_norm.append((C_expected[i])/C_max)
-print(numpy.amax(C_expected_norm, axis=0))
-# print()
-
-# Calculate Bernstein stuff
-# B = (5 choose k)*(C_expected_norm^k)*(1 - C_expected_norm)^(1-k) or something like that
-# F = Bx*By*Bz
-
-# output = open("OUTPUT/" + filename + "output1.txt", 'w')
-# output.write(str(N_c) + ", " + str(N_frames) + ", " + filename + "output1.txt\n")
-# for i in range(len(C_expected)):
-# 	output.write("%.2f" % C_expected[i][0] + ", " + "%.2f" % C_expected[i][1] + ", " + "%.2f" % C_expected[i][2] + "\n")
-# 	print("%.2f" % C_expected[i][0] + ", " + "%.2f" % C_expected[i][1] + ", " + "%.2f" % C_expected[i][2])
+# for frame in range(N_frames):
+# 	print(numpy.array(F[frame]).shape, numpy.array(c).shape)
+# 	output.write(get_coeff(numpy.array(F[frame]), numpy.array(c)))
+# 	# print("%.2f" % C_expected[i][0] + ", " + "%.2f" % C_expected[i][1] + ", " + "%.2f" % C_expected[i][2])
 # output.close()
