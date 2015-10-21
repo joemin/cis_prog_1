@@ -78,8 +78,6 @@ def get_coeff(C_expected, c, N_frames):
 	for i in range(len(C_expected)):
 		C_expected_norm.append((C_expected[i] - C_min)/(C_max - C_min))
 
-	# print(numpy.array(C_expected_norm).shape)
-
 	for data_point in range(len(C_expected_norm)):
 		F.append([])
 		for i in range(6):
@@ -88,11 +86,31 @@ def get_coeff(C_expected, c, N_frames):
 					F[data_point].append(B(i, C_expected_norm[data_point][0])*B(j, C_expected_norm[data_point][1])*B(k, C_expected_norm[data_point][2]))
 	return numpy.linalg.lstsq(numpy.array(F), numpy.array(c))[0]
 
-if (len(sys.argv) != 3):
+def correct_distortion(coeffs, q):
+	G_corrected = []
+	q_norm = []
+	q_max = numpy.linalg.norm(numpy.amax(q, axis=0))
+	q_min = numpy.linalg.norm(numpy.amin(q, axis=0))
+
+	for i in range(len(q)):
+		q_norm.append((q[i] - q_min)/(q_max - q_min))
+
+	for data_point in range(len(q_norm)):
+		sum = [0, 0, 0]
+		for i in range(6):
+			for j in range(6):
+				for k in range(6):
+					sum = [sum[0] + coeffs[data_point][0]*B(i, q_norm[data_point][0]),  sum[1] + coeffs[data_point][1]*B(j, q_norm[data_point][1]), sum[2] + coeffs[data_point][2]*B(k, q_norm[data_point][2])]
+		G_corrected.append(sum)
+	print(G_corrected)
+	return G_corrected
+
+if (len(sys.argv) != 4):
 	sys.exit(0)
 
 cal_body = open(sys.argv[1])
 cal_readings = open(sys.argv[2])
+piv_points = open(sys.argv[3])
 index1 = int(sys.argv[1].index("pa1"))
 index2 = int(sys.argv[1].index("calbody"))
 filename = sys.argv[1][index1:index2]
@@ -109,6 +127,10 @@ c = []
 F_d = []
 F_a = []
 C_expected = []
+
+piv_first_line = piv_points.readline().split(",")
+num_markers = int(piv_first_line[0].strip())
+G = []
 
 # cal_body
 for i in range(N_d):
@@ -129,6 +151,7 @@ for i in range(N_frames):
 	A = []
 	C = []
 	C_expected.append([])
+	G.append([])
 	for j in range(N_d):
 		line = cal_readings.readline().split(",")
 		tpose = numpy.array([float(line[0].strip()), float(line[1].strip()), float(line[2].strip())])
@@ -147,12 +170,30 @@ for i in range(N_frames):
 		inside = numpy.dot(R_a, c[j]) + P_a
 		square = numpy.dot(R_d_i, inside) - P_d_i
 		C_expected[i].append([square[0][0], square[1][1], square[2][2]])
+	for j in range(0, num_markers):
+		line = piv_points.readline().split(",")
+		t = [float(line[0].strip()),float(line[1].strip()), float(line[2].strip())]
+		G[i].append(numpy.array(t))
+# G = numpy.array(G).T
 
+# print(numpy.array(G))
 cal_body.close()
 cal_readings.close()
 
-for frame in range(N_frames):
-	print(get_coeff(C_expected[frame], c, N_frames))
+coeffs = []
+corrected_G = []
+
+test = [[0, 0, 0], [1, 1, 1], [2, 2, 2]]
+test2 = [[0, 0, 0], [1, 1, 1], [2, 2, 2]]
+# print(get_coeff(test, test2, 0))
+print(correct_distortion(get_coeff(test, test2, 0), test))
+
+for frame in range(1):
+	coeffs.append(get_coeff(C_expected[frame], c, N_frames))
+	corrected_G.append(correct_distortion(coeffs[frame], G[frame]))
+# print(numpy.array(corrected_G))
+# print(G[0])
+
 
 # output = open("OUTPUT/" + filename + "output2.txt", 'w')
 # output.write(str(N_c) + ", " + str(N_frames) + ", " + filename + "output2.txt\n")
