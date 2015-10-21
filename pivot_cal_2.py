@@ -12,6 +12,7 @@ def get_frame(G, g):
     Gx, Gy, Gz = numpy.sum(G, axis=1)
     centroid_1 = numpy.array([[Gx], [Gy], [Gz]])/len(G[0])
     G = G - centroid_1 #center around origin
+    # print(centroid_1)
 
     gx, gy, gz = numpy.sum(g, axis=1)
     centroid_2 = numpy.array([[gx], [gy], [gz]])/len(g[0])
@@ -65,6 +66,8 @@ class Frame:
 	def get_trans(self):
 		return self.translation
 
+
+
 def B(k, v):
 	# print(v)
 	nCk = math.factorial(5) / (math.factorial(k)*math.factorial(5 - k))
@@ -90,15 +93,14 @@ def get_coeff(C_expected, C):
 		# C_expected_norm.append((C_expected[i])/(C_max))
 
 	# C_norm = C
-	for data_point in range(len(C_norm) - 10):
+	for data_point in range(len(C_norm)):
 		F.append([])
 		for i in range(6):
 			for j in range(6):
 				for k in range(6):
 					F[data_point].append(B(i, C_norm[data_point][0])*B(j, C_norm[data_point][1])*B(k, C_norm[data_point][2]))
 
-	# print()
-	return numpy.linalg.lstsq(numpy.array(F), numpy.array(C_expected[:-10]))[0], C_min, C_max
+	return numpy.linalg.lstsq(numpy.array(F), numpy.array(C_expected))[0], C_min, C_max
 
 def correct_distortion(coeffs, q, q_min, q_max):
 	G_corrected = []
@@ -215,21 +217,116 @@ for i in range(N_frames):
 		square = numpy.dot(R_d_i, inside) - P_d_i
 		C_expected.append([square[0][0], square[1][1], square[2][2]])
 		# C_expected[i].append([square[0][0], square[1][1], square[2][2]])
-
-# print(numpy.array(G))
-cal_body.close()
-cal_readings.close()
-piv_points.close()
+	
 
 coeffs, q_min, q_max = get_coeff(C_expected, C)
 
-print(numpy.allclose(correct_distortion(coeffs, C, q_min, q_max), C_expected, rtol=1e+02))
+G = [[0, 0, 0], [1, 1, 1], [2, 2, 2]]
+print(correct_distortion(coeffs, G, q_min, q_max))
 
-# output = open("OUTPUT/" + filename + "output2.txt", 'w')
-# output.write(str(N_c) + ", " + str(N_frames) + ", " + filename + "output2.txt\n")
+# frames = []
+# rotations = []
+# translations = []
+# G0 = []
+# g = []
+# # print(numpy.allclose(correct_distortion(coeffs, C, q_min, q_max), C_expected, rtol=1e-02))
+# for i in range(1):
+# 	G = []
+# 	for j in range(0, num_markers):
+# 		line = piv_points.readline().split(",")
+# 		# get array G1
+# 		t = [float(line[0].strip()),float(line[1].strip()), float(line[2].strip())]
+# 		G.append(t)
+# 	G = numpy.array(G).T
+# 	# G = numpy.array(G)
+# 	G_corrected = correct_distortion(coeffs, G.T, q_min, q_max)
+# 	print(G.T)
+# 	print(G_corrected)
+# 	# print(numpy.array(G).T)
+# 	# print(G_corrected.T)
+# 	# print(numpy.allclose(G, G_corrected, rtol=1e-01))
 
-# for frame in range(N_frames):
-# 	print(numpy.array(F[frame]).shape, numpy.array(c).shape)
-# 	output.write(get_coeff(numpy.array(F[frame]), numpy.array(c)))
-# 	# print("%.2f" % C_expected[i][0] + ", " + "%.2f" % C_expected[i][1] + ", " + "%.2f" % C_expected[i][2])
-# output.close()
+# 	if i is 0:
+# 		Gx, Gy, Gz = numpy.sum(G_corrected, axis=1)
+# 		G0 = numpy.array([[Gx], [Gy], [Gz]])/len(G_corrected[0])
+# 		g = G_corrected - G0
+# 	frames.append(get_frame(G_corrected, g))
+# 	curr_rot = numpy.array(frames[i].get_rot())
+# 	rotations.append([curr_rot[0][0], curr_rot[0][1], curr_rot[0][2], -1, 0, 0])
+# 	rotations.append([curr_rot[1][0], curr_rot[1][1], curr_rot[1][2], 0, -1, 0])
+# 	rotations.append([curr_rot[2][0], curr_rot[2][1], curr_rot[2][2], 0, 0, -1])
+
+# 	t = -1*frames[i].get_trans()
+# 	translations.append(t[0])
+# 	translations.append(t[1])
+# 	translations.append(t[2])
+
+
+# cal_body.close()
+# cal_readings.close()
+# piv_points.close()
+
+# # # solve Pdimple = frames[k]*t
+# a = numpy.squeeze(numpy.array(rotations))
+# b = numpy.array(translations)
+# x = numpy.linalg.lstsq(numpy.squeeze(numpy.array(rotations)), numpy.squeeze(numpy.array(translations)))
+# print("%.2f" % x[0][3] + ", " + "%.2f" % x[0][4] + ", " + "%.2f" % x[0][5])
+
+
+
+
+
+##################################################################################################################
+##################################################################################################################
+##################################################################################################################
+##################################################################################################################
+##################################################################################################################
+##################################################################################################################
+##################################################################################################################
+##################################################################################################################
+
+
+
+# if (len(sys.argv) != 2):
+# 	sys.exit(0)
+
+# in_file = open(sys.argv[1])
+
+# frames = []
+# rotations = []
+# translations = []
+# G0 = []
+# g = []
+
+# first_line = in_file.readline().split(",")
+# num_markers = int(first_line[0].strip())
+# num_frames = int(first_line[1].strip())
+# for i in range(0, num_frames):
+# 	G = []
+# 	for j in range(0, num_markers):
+# 		line = in_file.readline().split(",")
+# 		# get array G1
+# 		t = [float(line[0].strip()),float(line[1].strip()), float(line[2].strip())]
+# 		G.append(t)
+# 	G = numpy.array(G).T
+# 	if i is 0:
+# 		Gx, Gy, Gz = numpy.sum(G, axis=1)
+# 		G0 = numpy.array([[Gx], [Gy], [Gz]])/len(G[0])
+# 		g = G - G0
+# 	frames.append(get_frame(G, g))
+# 	curr_rot = numpy.array(frames[i].get_rot())
+# 	rotations.append([curr_rot[0][0], curr_rot[0][1], curr_rot[0][2], -1, 0, 0])
+# 	rotations.append([curr_rot[1][0], curr_rot[1][1], curr_rot[1][2], 0, -1, 0])
+# 	rotations.append([curr_rot[2][0], curr_rot[2][1], curr_rot[2][2], 0, 0, -1])
+
+# 	t = -1*frames[i].get_trans()
+# 	translations.append(t[0])
+# 	translations.append(t[1])
+# 	translations.append(t[2])
+
+
+# # # solve Pdimple = frames[k]*t
+# a = numpy.squeeze(numpy.array(rotations))
+# b = numpy.array(translations)
+# x = numpy.linalg.lstsq(numpy.squeeze(numpy.array(rotations)), numpy.squeeze(numpy.array(translations)))
+# print("%.2f" % x[0][3] + ", " + "%.2f" % x[0][4] + ", " + "%.2f" % x[0][5])
