@@ -1,7 +1,6 @@
 import numpy
 import math
 import sys
-from transformations import superimposition_matrix, random_rotation_matrix, quaternion_matrix
 
 _EPS = numpy.finfo(float).eps * 4.0
 
@@ -106,6 +105,7 @@ c = []
 F_d = []
 F_a = []
 C_expected = []
+C = []
 
 # cal_body
 for i in range(N_d):
@@ -124,7 +124,6 @@ for i in range(N_c):
 for i in range(N_frames):
 	D = []
 	A = []
-	C = []
 	for j in range(N_d):
 		line = cal_readings.readline().split(",")
 		tpose = numpy.array([float(line[0].strip()), float(line[1].strip()), float(line[2].strip())])
@@ -148,11 +147,9 @@ for i in range(N_frames):
 	# for each frame, calculate Fd and Fa, and compute C expected using Fd-1 * Fa * c
 	for j in range(N_c):
 		line = cal_readings.readline().split(",") # this is unnecessary right now
-		# C.append([float(line[0].strip()), float(line[1].strip()), float(line[2].strip())])
+		C.append([float(line[0].strip()), float(line[1].strip()), float(line[2].strip())])
 		inside = numpy.dot(R_a, c[j]) + P_a
 		square = numpy.dot(R_d_i, inside) - P_d_i
 		C_expected.append([square[0][0], square[1][1], square[2][2]])
-		print(C_expected[i*27 + j])
-		# print(line)
-		# print("***")
-		# print(i, j)
+
+print (numpy.allclose(numpy.array(C_expected), numpy.array(C), rtol=.01))
