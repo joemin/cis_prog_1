@@ -73,6 +73,10 @@ def B(k, v):
 	nCk = math.factorial(5) / (math.factorial(k)*math.factorial(5 - k))
 	return nCk*((1 - v)**(5 - k))*(v**(k))
 
+def get_F_value(i, j, k, vector):
+	return B(i, vector[0])*B(j, vector[1])*B(k, vector[2])
+
+
 def get_coeff(C_expected, C):
 	F = []
 	C_norm = []
@@ -98,8 +102,12 @@ def get_coeff(C_expected, C):
 		for i in range(6):
 			for j in range(6):
 				for k in range(6):
-					F[data_point].append(B(i, C_norm[data_point][0])*B(j, C_norm[data_point][1])*B(k, C_norm[data_point][2]))
+					F[data_point].append(get_F_value(i,j,k,C_norm[data_point]))
 
+	# F_i = numpy.linalg.inv(F)
+	F = numpy.array(F)
+	# print(numpy.array(C_expected).shape)
+	# print(numpy.allclose(numpy.dot(F_i, C_expected), numpy.linalg.lstsq(numpy.array(F), numpy.array(C_expected))[0]))
 	return numpy.linalg.lstsq(numpy.array(F), numpy.array(C_expected))[0], C_min, C_max
 
 def correct_distortion(coeffs, q, q_min, q_max):
@@ -130,12 +138,14 @@ def correct_distortion(coeffs, q, q_min, q_max):
 					# co_index = 36*i + 6*j + k
 					# print(sum)
 					# sum = [sum[0] + coeffs[co_index][0]*B(i, q_norm[data_point][0]),  sum[1] + coeffs[co_index][1]*B(j, q_norm[data_point][1]), sum[2] + coeffs[co_index][2]*B(k, q_norm[data_point][2])]
-					F[data_point].append(B(i, q_norm[data_point][0])*B(j, q_norm[data_point][1])*B(k, q_norm[data_point][2]))
+					F[data_point].append(get_F_value(i,j,k,q_norm[data_point]))
 					# print(coeffs[36*i + 6*j + k][0]*B(i, q_norm[data_point][0]), coeffs[36*i + 6*j + k][1]*B(j, q_norm[data_point][1]), coeffs[36*i + 6*j + k][2]*B(k, q_norm[data_point][2]))
 		# print(sum)
 		# G_corrected.append(sum)
 	# print(coeffs.shape)
 	F = numpy.array(F)
+	# print(F.shape)
+	# print(numpy.array(C_expected).shape)
 	# print(F.shape)
 	G_corrected = numpy.dot(F, coeffs)
 	# G_corrected = [G_corrected[0] - G_corrected[0], G_corrected[1] - G_corrected[0], G_corrected[2] - G_corrected[0], G_corrected[3] - G_corrected[0]]
@@ -221,112 +231,53 @@ for i in range(N_frames):
 
 coeffs, q_min, q_max = get_coeff(C_expected, C)
 
-G = [[0, 0, 0], [1, 1, 1], [2, 2, 2]]
-print(correct_distortion(coeffs, G, q_min, q_max))
+# G = [[0, 0, 0], [1, 1, 1], [2, 2, 2]]
+# print(correct_distortion(coeffs, G, q_min, q_max))
 
-# frames = []
-# rotations = []
-# translations = []
-# G0 = []
-# g = []
-# # print(numpy.allclose(correct_distortion(coeffs, C, q_min, q_max), C_expected, rtol=1e-02))
-# for i in range(1):
-# 	G = []
-# 	for j in range(0, num_markers):
-# 		line = piv_points.readline().split(",")
-# 		# get array G1
-# 		t = [float(line[0].strip()),float(line[1].strip()), float(line[2].strip())]
-# 		G.append(t)
-# 	G = numpy.array(G).T
-# 	# G = numpy.array(G)
-# 	G_corrected = correct_distortion(coeffs, G.T, q_min, q_max)
-# 	print(G.T)
-# 	print(G_corrected)
-# 	# print(numpy.array(G).T)
-# 	# print(G_corrected.T)
-# 	# print(numpy.allclose(G, G_corrected, rtol=1e-01))
+frames = []
+rotations = []
+translations = []
+G0 = []
+g = []
+# print(numpy.allclose(correct_distortion(coeffs, C, q_min, q_max), C_expected, rtol=1e-02))
+for i in range(N_frames):
+	G = []
+	for j in range(0, num_markers):
+		line = piv_points.readline().split(",")
+		# get array G1
+		t = [float(line[0].strip()),float(line[1].strip()), float(line[2].strip())]
+		G.append(t)
+	G = numpy.array(G)
+	# G = numpy.array(G)
+	G_corrected = correct_distortion(coeffs, G, q_min, q_max)
+	print(G)
+	print(G_corrected)
+	# print(numpy.array(G).T)
+	# print(G_corrected.T)
+	print(numpy.allclose(G, G_corrected, rtol=1e-01))
 
-# 	if i is 0:
-# 		Gx, Gy, Gz = numpy.sum(G_corrected, axis=1)
-# 		G0 = numpy.array([[Gx], [Gy], [Gz]])/len(G_corrected[0])
-# 		g = G_corrected - G0
-# 	frames.append(get_frame(G_corrected, g))
-# 	curr_rot = numpy.array(frames[i].get_rot())
-# 	rotations.append([curr_rot[0][0], curr_rot[0][1], curr_rot[0][2], -1, 0, 0])
-# 	rotations.append([curr_rot[1][0], curr_rot[1][1], curr_rot[1][2], 0, -1, 0])
-# 	rotations.append([curr_rot[2][0], curr_rot[2][1], curr_rot[2][2], 0, 0, -1])
+	if i is 0:
+		Gx, Gy, Gz = numpy.sum(G_corrected, axis=1)
+		G0 = numpy.array([[Gx], [Gy], [Gz]])/len(G_corrected[0])
+		g = G_corrected - G0
+	frames.append(get_frame(G_corrected, g))
+	curr_rot = numpy.array(frames[i].get_rot())
+	rotations.append([curr_rot[0][0], curr_rot[0][1], curr_rot[0][2], -1, 0, 0])
+	rotations.append([curr_rot[1][0], curr_rot[1][1], curr_rot[1][2], 0, -1, 0])
+	rotations.append([curr_rot[2][0], curr_rot[2][1], curr_rot[2][2], 0, 0, -1])
 
-# 	t = -1*frames[i].get_trans()
-# 	translations.append(t[0])
-# 	translations.append(t[1])
-# 	translations.append(t[2])
-
-
-# cal_body.close()
-# cal_readings.close()
-# piv_points.close()
-
-# # # solve Pdimple = frames[k]*t
-# a = numpy.squeeze(numpy.array(rotations))
-# b = numpy.array(translations)
-# x = numpy.linalg.lstsq(numpy.squeeze(numpy.array(rotations)), numpy.squeeze(numpy.array(translations)))
-# print("%.2f" % x[0][3] + ", " + "%.2f" % x[0][4] + ", " + "%.2f" % x[0][5])
+	t = -1*frames[i].get_trans()
+	translations.append(t[0])
+	translations.append(t[1])
+	translations.append(t[2])
 
 
+cal_body.close()
+cal_readings.close()
+piv_points.close()
 
-
-
-##################################################################################################################
-##################################################################################################################
-##################################################################################################################
-##################################################################################################################
-##################################################################################################################
-##################################################################################################################
-##################################################################################################################
-##################################################################################################################
-
-
-
-# if (len(sys.argv) != 2):
-# 	sys.exit(0)
-
-# in_file = open(sys.argv[1])
-
-# frames = []
-# rotations = []
-# translations = []
-# G0 = []
-# g = []
-
-# first_line = in_file.readline().split(",")
-# num_markers = int(first_line[0].strip())
-# num_frames = int(first_line[1].strip())
-# for i in range(0, num_frames):
-# 	G = []
-# 	for j in range(0, num_markers):
-# 		line = in_file.readline().split(",")
-# 		# get array G1
-# 		t = [float(line[0].strip()),float(line[1].strip()), float(line[2].strip())]
-# 		G.append(t)
-# 	G = numpy.array(G).T
-# 	if i is 0:
-# 		Gx, Gy, Gz = numpy.sum(G, axis=1)
-# 		G0 = numpy.array([[Gx], [Gy], [Gz]])/len(G[0])
-# 		g = G - G0
-# 	frames.append(get_frame(G, g))
-# 	curr_rot = numpy.array(frames[i].get_rot())
-# 	rotations.append([curr_rot[0][0], curr_rot[0][1], curr_rot[0][2], -1, 0, 0])
-# 	rotations.append([curr_rot[1][0], curr_rot[1][1], curr_rot[1][2], 0, -1, 0])
-# 	rotations.append([curr_rot[2][0], curr_rot[2][1], curr_rot[2][2], 0, 0, -1])
-
-# 	t = -1*frames[i].get_trans()
-# 	translations.append(t[0])
-# 	translations.append(t[1])
-# 	translations.append(t[2])
-
-
-# # # solve Pdimple = frames[k]*t
-# a = numpy.squeeze(numpy.array(rotations))
-# b = numpy.array(translations)
-# x = numpy.linalg.lstsq(numpy.squeeze(numpy.array(rotations)), numpy.squeeze(numpy.array(translations)))
+# # solve Pdimple = frames[k]*t
+a = numpy.squeeze(numpy.array(rotations))
+b = numpy.array(translations)
+x = numpy.linalg.lstsq(numpy.squeeze(numpy.array(rotations)), numpy.squeeze(numpy.array(translations)))
 # print("%.2f" % x[0][3] + ", " + "%.2f" % x[0][4] + ", " + "%.2f" % x[0][5])
