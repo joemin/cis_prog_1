@@ -8,6 +8,7 @@ _EPS = numpy.finfo(float).eps * 4.0
 def isclose(a, b, rel_tol=1e-09, abs_tol=0.0):
     return abs(a-b) <= max(rel_tol * max(abs(a), abs(b)), abs_tol)
 
+# Returns F such that F*g = G
 def get_frame(G, g):
     G = numpy.array(G)
     G_original = G
@@ -64,6 +65,7 @@ def get_frame(G, g):
     #     t[2][0] = 0.00
 
     return Frame(R.T, -t)
+
 
 
 class Frame:
@@ -145,8 +147,45 @@ def correct_distortion(coeffs, q, q_min, q_max):
 	# print(G_corrected.shape)
 	return G_corrected
 
+def get_frame_output(G, g):
+    G = numpy.array(G)
+    G_original = G
+    g = numpy.array(g)
+    g_original = g
+    Gx, Gy, Gz = numpy.sum(G, axis=1)
+    centroid_1 = numpy.array([[Gx], [Gy], [Gz]])/len(G[0])
+    G = G - centroid_1 #center around origin
 
-if (len(sys.argv) != 6):
+    gx, gy, gz = numpy.sum(g, axis=1)
+    centroid_2 = numpy.array([[gx], [gy], [gz]])/len(g[0])
+    g = g - centroid_2 #center around origin
+
+    xx, yy, zz = numpy.sum(G * g, axis=1)
+    xy, yz, zx = numpy.sum(G * numpy.roll(g, -1, axis=0), axis=1)
+    xz, yx, zy = numpy.sum(G * numpy.roll(g, -2, axis=0), axis=1)
+    N = [[xx+yy+zz, yz-zy,      zx-xz,      xy-yx],
+            [yz-zy,    xx-yy-zz, xy+yx,      zx+xz],
+            [zx-xz,    xy+yx,    yy-xx-zz, yz+zy],
+            [xy-yx,    zx+xz,    yz+zy,    zz-xx-yy]]
+    w1, v1 = numpy.linalg.eig(N)
+    max_index = numpy.argmax(w1)
+    q = v1[:,max_index]
+    n = numpy.dot(q, q)
+    if n < _EPS:
+        R = numpy.identity(3)
+    else:
+        rot_matrix = [[math.pow(q[0], 2) + math.pow(q[1], 2) - math.pow(q[2], 2) - math.pow(q[3], 2), 2*(q[1]*q[2] - q[0]*q[3]), 2*(q[1]*q[3] + q[0]*q[2])],
+        [2*(q[1]*q[2] + q[0]*q[3]), math.pow(q[0], 2) - math.pow(q[1], 2) + math.pow(q[2], 2) - math.pow(q[3], 2), 2*(q[2]*q[3] - q[0]*q[1])],
+        [2*(q[1]*q[3] - q[0]*q[2]), 2*(q[2]*q[3] + q[0]*q[1]), math.pow(q[0], 2) - math.pow(q[1], 2) - math.pow(q[2], 2) + math.pow(q[3], 2)]]
+        R = numpy.array(rot_matrix)
+
+    t = numpy.dot(R.T, centroid_2) - centroid_1
+
+    return Frame(R.T, -t)
+
+
+
+if (len(sys.argv) != 7):
 	sys.exit(0)
 
 cal_body = open(sys.argv[1])
@@ -259,7 +298,7 @@ for i in range(0, num_frames):
 a = numpy.squeeze(numpy.array(rotations))
 b = numpy.array(translations)
 x = numpy.linalg.lstsq(numpy.squeeze(numpy.array(rotations)), numpy.squeeze(numpy.array(translations)))
-print(numpy.array(x[0][3:6]))
+# print(numpy.array(x[0][3:6]))
 # print(numpy.array(x[0]))
 
 
@@ -268,7 +307,7 @@ print(numpy.array(x[0][3:6]))
 tG = numpy.array(x[0][0:3])
 # print(tG)
 
-# get fiducials
+# get EM fiducials
 fiducials_file = open(sys.argv[4])
 
 fid_first_line = fiducials_file.readline().split(",")
@@ -276,8 +315,8 @@ fid_markers = int(fid_first_line[0].strip())
 fid_points = int(fid_first_line[1].strip())
 
 
-G0 = []
-g = []
+# G0 = []
+# g = []
 fiducials = []
 for i in range(0, fid_points):
 	G = []
@@ -285,19 +324,92 @@ for i in range(0, fid_points):
 		line = fiducials_file.readline().split(",")
 		t = [float(line[0].strip()),float(line[1].strip()), float(line[2].strip())]
 		G.append(t)
-	# G = numpy.array(G)
+	G = numpy.array(G)
 	G = correct_distortion(coeffs, G, q_min, q_max)
 	G = G.T
-	if i is 0:
-		Gx, Gy, Gz = numpy.sum(G, axis=1)
-		G0 = numpy.array([[Gx], [Gy], [Gz]])/len(G[0])
-		g = G - G0
+	# if i is 0:
+	# 	Gx, Gy, Gz = numpy.sum(G, axis=1)
+	# 	G0 = numpy.array([[Gx], [Gy], [Gz]])/len(G[0])
+	# 	g = G - G0
 	Fg = get_frame(G, g)
 	fiducials.append(numpy.dot(Fg.get_rot(), tG) + Fg.get_trans().T)
 
-print(numpy.array(fiducials))
+print (numpy.array(fiducials))
+# Extracting info from the extraneous array
+fids = []
+for fid in fiducials:
+	fids.append(fid[0])
 
-
-
+################################################
+###Everything is probably correct up to here###
+################################################
+# get CT fiducials
 ct_fid_file = open(sys.argv[5])
+ct_fid_first_line = ct_fid_file.readline().split(",")
+ct_fid_points = int(ct_fid_first_line[0].strip())
+b = []
+for i in range (ct_fid_points):
+	line = ct_fid_file.readline().split(",")
+	t = [float(line[0].strip()),float(line[1].strip()), float(line[2].strip())]
+	b.append(t)
 
+# fids[i] = Bi and b[i] = bi
+
+fids = numpy.array(fids)
+b = numpy.array(b)
+# b = numpy.array(list(reversed(b)))
+# print(reversed(b))
+# fids = numpy.array([[0, 0, 1], [-1, 1, 5], [2, 4, 2]])
+# b = numpy.array([[-1, -1, -1], [-2, -2, -2], [-3, -3, -3]])
+print(fids)
+print(b)
+# F_reg = get_frame(fids.T, b.T)
+
+# F s.t. F*fids = b
+# print(b.shape, fids.shape)
+F_reg = get_frame_output(b.T, fids.T)
+
+F_reg_rot = numpy.array(F_reg.get_rot())
+F_reg_trans = numpy.array(F_reg.get_trans())
+
+# print(F_reg_rot)
+# print(F_reg_trans)
+
+# for i in range(len(fids)):
+# 	print(numpy.dot(F_reg_rot, fids[i]) + F_reg_trans.T)
+# 	print(b[i])
+
+# print(numpy.allclose(numpy.dot(F_reg_rot, b) + F_reg_trans.T, fids))
+
+
+
+# get EM Nav
+nav_file = open(sys.argv[6])
+nav_first_line = nav_file.readline().split(",")
+nav_markers = int(nav_first_line[0].strip())
+nav_frames = int(nav_first_line[1].strip())
+
+navs = []
+for i in range(nav_frames):
+	G = []
+	for j in range(0, nav_markers):
+		line = nav_file.readline().split(",")
+		t = [float(line[0].strip()),float(line[1].strip()), float(line[2].strip())]
+		G.append(t)
+	G = numpy.array(G)
+	G = correct_distortion(coeffs, G, q_min, q_max)
+	G = G.T
+	# if i is 0:
+	# 	Gx, Gy, Gz = numpy.sum(G, axis=1)
+	# 	G0 = numpy.array([[Gx], [Gy], [Gz]])/len(G[0])
+	# 	g = G - G0
+	Fg = get_frame(G, g)
+	navs.append(numpy.dot(Fg.get_rot(), tG) + Fg.get_trans().T)
+
+navs = numpy.array(navs)
+print(navs)
+navs_extract = []
+for nav in navs:
+	navs_extract.append(nav[0])
+for i in range(len(navs_extract)):
+	print(numpy.dot(F_reg_rot, navs_extract[i]) + F_reg_trans.T)
